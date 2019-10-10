@@ -1,0 +1,197 @@
+############################
+##### IMPORTED MODULES #####
+############################
+import numpy as np
+import time
+import itertools
+import matplotlib.pyplot as plt
+
+#############################
+##### CLASS DEFINITIONS #####
+#############################
+class cities():
+    def __init__(self):
+        #***** Construction du dictionnaire des villes *****
+        self.infos=dict()
+
+        self.infos['Lille']      ={'x':52.0, 'y':197.0}
+        self.infos['Orléans']    ={'x':-33.0, 'y':-105.0}
+        self.infos['Lyon']       ={'x':185.0, 'y':-343.0}
+        self.infos['Paris']      ={'x':0.0, 'y':0.0}
+        self.infos['Marseille']  ={'x':225.0, 'y':-617.0}
+        self.infos['Strasbourg'] ={'x':403.0, 'y':-31.0}
+        self.infos['Rennes']     ={'x':-300.0, 'y':-88.0}
+        self.infos['Metz']       ={'x':285.0, 'y':30.0}
+        self.infos['Bordeaux']   ={'x':-213.0, 'y':-448.0}
+        self.infos['Perpignan']  ={'x':40.0, 'y':-688.0}
+        self.infos['Cherbourg']  ={'x':-289.0, 'y':86.0}
+
+    def ajout(self,nom,xx,yy):
+        """
+        Methode d'ajout d'une ville au dictionnaire.
+
+        Entrees :
+          * nom : nom de la ville, chaine de caractère
+          * xx : coordonnée en x par rapport à Paris
+          * yy : coordonnée en y par rapport à Paris
+        """
+        self.infos[nom]={'x':float(xx), 'y':float(yy)}
+
+################################
+##### FUNCTION DEFINITIONS #####
+################################
+def cost_function(city_list, city_dict):
+    """
+    Fonction coût à minimiser. Pour une liste de villes donnée en entrée, la fonction calcule la distance à
+    parcourir pour rallier toutes ces villes une à une. Attention, la fonction prend en compte la première
+    distance de Paris et la dernière distance vers Paris.
+
+    Entrée :
+      * city_list : liste ordonnée des villes à parcourir, liste python
+      * city_dict : dictionnaire des villes contenant les informations parmettant de
+                    calculer les distances à parcourir, instance de la classe cities
+
+    Sortie :
+      * la distance parcourue, float python
+    """
+    x=0 #Position de paris
+    y=0
+    d=0
+    for i in city_list :
+        d1 = np.sqrt((city_dict[city_list[i],'x']-x)**2 + (city_dict[city_list[i],'y']-y)**2)
+        x=city_dict[city_list[i],'x']
+        y=city_dict[city_list[i],'y']
+        d+=d1
+    d+=np.sqrt(x**2 +y**2)
+        
+    
+    return d
+
+def compute_new_candidate(list_in):
+    """
+    Fonction associée à la méthode de recuit simulé permettant de calculer un nouveau trajet candidat. On
+    pourra utiliser la méthode (fonction) numpy.random.permutation() pour ce faire (print
+    numpy.random.permutation.__doc__ à taper dans un shell python pour avoir des informations sur
+    cette fonction).
+
+    Entrée :
+      * list_in : une liste non ordonnée des villes à visiter par le voyageur de commerce, liste python
+      
+
+    Sortie :
+      * une liste "aléatoire" ordonnée des villes à visiter par le voyageur de commerce, liste python
+    """
+    ranlist = np.random.permutation(list_in).tolist()
+    return ranlist
+    
+def compute_Temp(h,k,ind,Temp):
+    """
+    Fonction associée à la méthode de recuit simulé. Permet de calculer la nouvelles valeur de
+    température à la fin d'une itération (voir algorithme du cours).
+
+    Entrtée :
+      * h>0 : paramètre du calcul, float python. Plus h est petit, plus l'algorithme risque de rester
+              piéger dans un minimum local. Plus h est grand, plus longue est la convergence de
+              l'algorithme
+      * k : paramètre de l'algorithme, integer python
+      * ind : itération courante de l'algorithme, integer python
+      * Temp : température courante de l'algorithme
+
+    Sortie : 
+      * nouvelle valeur du paramètre k de l'algorithme, integer python
+      * nouvelle valeur de température
+    """
+    while ind< np.exp((k-1)*h) or ind>np.exp(k*h) :
+        k+=1
+    T = 1/k
+    return T,k
+
+##################
+##### SCRIPT #####
+##################
+##### Paramètres #####
+#***** Dictionnaire des villes *****
+dico=cities()
+
+######################
+##### QUESTION 1 #####
+######################
+#***** Liste non ordonnée des villes à parcourir *****
+parcours=['Marseille','Lyon','Rennes','Lille','Orléans','Strasbourg','Metz']
+
+
+
+
+
+###### Résolution du problème en force brute #####
+print "##### Résolution du problème en force brute #####"
+
+#***** Calcul de toutes les permutations possibles *****
+t1=time.time()
+trajets=list(itertools.permutations(parcours))
+print 'Nombre de trajets étudiés : ', len(trajets)
+
+d=np.inf
+indice = 0
+for i in trajets :
+    if cost_function(trajets[i],dico)<d :
+        d=cost_function(trajets[i],dico)
+        indice =i
+
+#***** Calcul de la fonction coût pour chaque permutation *****
+
+
+t2=time.time()
+print 'Trajet le plus court :', trajets[i], 'd', d
+print 'Temps de calcul : ',t2-t1
+
+
+
+
+##### Résolution du problème par la méthode du recuit simulé #####
+print "##### Résolution du problème par la méthode du recuit simulé #####"
+
+#***** Paramètres du calcul *****
+#----- Initialisation -----
+city_list = parcours
+d = cost_function(city_list, dico)
+#----- Paramètres de l'algorithme -----
+itermax=1500
+hpar=1.0
+kpar=1
+Temp=1.0/kpar
+Temp_list=[Temp]
+
+#***** Algorithme de résolution *****
+t1=time.time()
+for ind in xrange(itermax):
+    #----- Calcul d'un nouveau trajet candidat -----
+    city_list2 = compute_new_candidate(parcours)
+    #----- Calcul de la différence de coût entre l'ancien et le nouveau trajet -----
+    E =cost_function(city_list2,dico) - cost_function(city_list, dico)
+    #----- Si le nouveau trajet candidat est plut cher, il peut quand même -----
+    if E < 0 :
+        city_list = city_list2
+    else:
+        u = np.random.random()
+        if np.exp(-E/Temp)>=u:
+            city_list = city_list2
+    Temp =compute_Temp(hpar,kpar,ind+1 ,Temp)
+    Temp_list.append(Temp)
+
+
+t2=time.time()
+#***** Résultat *****
+print 'Trajet le plus court :', city_list, 'd', cost_function(city_list,dico)
+print 'Temps de calcul : ',t2-t1
+
+
+#----- Profil de température -----
+plt.figure()
+plt.plot(Temp_list)
+plt.xlabel('$n$')
+plt.ylabel('$T$')
+plt.title(u'Profil de température')
+plt.grid()
+
+plt.show()
